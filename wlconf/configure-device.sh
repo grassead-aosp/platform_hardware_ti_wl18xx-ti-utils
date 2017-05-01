@@ -1,13 +1,13 @@
-#!/bin/sh
+#!/system/bin/sh
 # Script to run on the target to configure the wl18xx-conf.bin file to match the device capabilities
 
 # version
 VERSION=1.3
 
 # defaults
-binary_name="/lib/firmware/ti-connectivity/wl18xx-conf.bin"
-wlconf_path="/usr/sbin/wlconf/"
-ini_path="/usr/sbin/wlconf/official_inis"
+binary_name="/system/etc/firmware/ti-connectivity/wl18xx-conf.bin"
+wlconf_path="/system/etc/wifi/wlconf"
+ini_path="$wlconf_path/official_inis"
 
 # function for printing help
 print_help()
@@ -25,7 +25,7 @@ print_help()
 print_dump()
 {
 	echo "Saving wl18xx-conf.bin dump to wl18xx-conf-dump.txt"
-	./wlconf -i $binary_name --get > wl18xx-conf-dump.txt
+	wlconf -i $binary_name --get > wl18xx-conf-dump.txt
 }
 
 # function for printing summary
@@ -41,6 +41,8 @@ print_summary()
 	echo "SISO40 Support: "$siso40mhz
 	echo "Japanese Standards Applied: "$japan
 	echo "Class 2 Permissive Change (C2PC) Applied: "$c2pc
+	echo ""
+	echo "Please reboot to use new configuration."
 	echo ""
 }
 
@@ -64,7 +66,7 @@ echo ""
 TI_MODULE=-1;
 while [ $TI_MODULE -eq -1 ]
 do
-	read -p 'Are you using a TI module? [y/n] : ' ti_mod
+	read ti_mod\?'Are you using a TI module? [y/n] : '
 	case $ti_mod in
 	    "n") TI_MODULE=0;;
 	    "N") TI_MODULE=0;;
@@ -82,7 +84,7 @@ done
 CHIP_FLAVOR=-1;
 while [ $CHIP_FLAVOR -eq -1 ]
 do
-	read -p 'What is the chip flavor? [1801/1805/1807/1831/1835/1837 or 0 for unknown] : ' CHIP_FLAVOR
+	read CHIP_FLAVOR\?'What is the chip flavor? [1801/1805/1807/1831/1835/1837 or 0 for unknown] : '
 	case $CHIP_FLAVOR in
 		1801) number_2_4G_antenna=1; number_5G_antenna=0;;
 		1805) number_2_4G_antenna=2; number_5G_antenna=0;;
@@ -120,7 +122,7 @@ else
 	while [ $C2PC -eq -1 ]
         do
                 if [ $c2pc_support -eq 1 ]; then
-                        read -p 'Should certification Class 2 Permissive Change (C2PC) due to higher antenna gain (max 3.2dBm) be applied? [y/n] : ' c2pc
+                        read c2pc\?'Should certification Class 2 Permissive Change (C2PC) due to higher antenna gain (max 3.2dBm) be applied? [y/n] : '
                         case $c2pc in
                                 "n") ini_file_name="WL1835MOD_INI.ini";C2PC=0;;
                                 "N") ini_file_name="WL1835MOD_INI.ini";C2PC=0;;
@@ -137,7 +139,7 @@ else
 	while [ $JP_STANDARD -eq -1 ]
 	do
 		if [ $jp_support -eq 1 ]; then
-			read -p 'Should Japanese standards be applied? [y/n] : ' japan
+			read japan\?'Should Japanese standards be applied? [y/n] : '
 			case $japan in
 				"n") ini_file_name="WL1837MOD_INI_FCC_CE.ini";JP_STANDARD=0;;
 				"N") ini_file_name="WL1837MOD_INI_FCC_CE.ini";JP_STANDARD=0;;
@@ -161,13 +163,15 @@ if [ ! -e $ini_file_name ]; then
 	exit;  
 fi
 
+# temporary remount rw /system
+mount -o rw,remount,rw /system
 
 # ask if one or two antennas will be fitted in 2.4GHz band
 NUM_OF_ANTENNAS=-1;
 while [ $NUM_OF_ANTENNAS -eq -1 ]
 do
 	if [ $number_2_4G_antenna -gt 1 ]; then
-		read -p 'How many 2.4GHz antennas are fitted? [1/2] : ' NUM_OF_ANTENNAS
+		read NUM_OF_ANTENNAS\?'How many 2.4GHz antennas are fitted? [1/2] : '
 		case $NUM_OF_ANTENNAS in
 			"1") number_2_4G_antenna=1;ht_mode=2;;
 			"2") number_2_4G_antenna=2;ht_mode=0;;
@@ -185,7 +189,7 @@ NUM_OF_ANTENNAS=-1;
 while [ $NUM_OF_ANTENNAS -eq -1 ]
 do
 	if [ $number_5G_antenna -eq 1 ]; then
-		read -p 'How many 5GHz antennas are fitted (using 2 antennas requires a proper switch)? [0/1/2] : ' NUM_OF_ANTENNAS
+		read NUM_OF_ANTENNAS\?'How many 5GHz antennas are fitted (using 2 antennas requires a proper switch)? [0/1/2] : '
 		case $NUM_OF_ANTENNAS in
 			"0") number_5G_antenna=0;;
 			"1") number_5G_antenna=1;;
@@ -219,7 +223,7 @@ siso40mhz="y";
 while [ $SISO40 -eq -1 ]
 do
 	if [ $number_2_4G_antenna -eq 1 ]; then
-		read -p 'Should SISO40 support be applied? [y/n] : ' siso40mhz
+		read siso40mhz\?'Should SISO40 support be applied? [y/n] : '
 		case $siso40mhz in
 			"n") ht_mode=2;SISO40=0;;
 			"N") ht_mode=2;SISO40=0;;
@@ -239,17 +243,20 @@ rmmod wlcore_sdio
 
 # create clean file
 cd $wlconf_path
-./wlconf -o $binary_name -I $ini_file_name
+wlconf -o $binary_name -I $ini_file_name
   
   
 # finally write values to binary
-./wlconf -i $binary_name -o $binary_name -s wl18xx.phy.number_of_assembled_ant2_4=$number_2_4G_antenna
-./wlconf -i $binary_name -o $binary_name -s wl18xx.phy.number_of_assembled_ant5=$number_5G_antenna
-./wlconf -i $binary_name -o $binary_name -s wl18xx.phy.high_band_component_type=$high_band_component_type
-./wlconf -i $binary_name -o $binary_name -s wl18xx.ht.mode=$ht_mode
+wlconf -i $binary_name -o $binary_name -s wl18xx.phy.number_of_assembled_ant2_4=$number_2_4G_antenna
+wlconf -i $binary_name -o $binary_name -s wl18xx.phy.number_of_assembled_ant5=$number_5G_antenna
+wlconf -i $binary_name -o $binary_name -s wl18xx.phy.high_band_component_type=$high_band_component_type
+wlconf -i $binary_name -o $binary_name -s wl18xx.ht.mode=$ht_mode
 
 print_summary
 
+# remount ro /system
+mount -o ro,remount,ro /system
+
 # reinsert the wlcore_sdio
-modprobe wlcore_sdio
+insmod /system/lib/modules/wlcore_sdio.ko
 

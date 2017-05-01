@@ -50,8 +50,6 @@ static void print_debugfs_cmd(char *type, int addr, int len, char * buf) {
 int get_debugfs_sdio_file_status()
 {
 	struct stat st;
-	if ( debugfs_filename==NULL)
-		return ASI_FAIL;
 
 	/* check if file exist */
 	if(stat(debugfs_filename, &st) != 0) {

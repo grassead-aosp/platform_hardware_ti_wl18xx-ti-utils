@@ -19,24 +19,40 @@ LOCAL_SRC_FILES := \
 
 LOCAL_CFLAGS := -DCONFIG_LIBNL20
 LOCAL_C_INCLUDES := \
-    $(LOCAL_PATH) \
-    external/libnl-headers
+    $(LOCAL_PATH)
 
+ifneq ($(wildcard external/libnl),)
+LOCAL_C_INCLUDES += external/libnl/include
+else
+LOCAL_C_INCLUDES += external/libnl-headers
+endif
+
+ifneq ($(wildcard external/libnl),)
+LOCAL_SHARED_LIBRARIES += libnl
+else
 LOCAL_STATIC_LIBRARIES := libnl_2
+endif
 LOCAL_MODULE_TAGS := debug
-LOCAL_MODULE := calibrator
+LOCAL_MODULE := calibrator_18xx
 
 include $(BUILD_EXECUTABLE)
 
 
+WL_LOGPROXY_CLANG_BROKEN := true
+ifneq ($(WL_LOGPROXY_CLANG_BROKEN),true)
 include $(CLEAR_VARS)
 
 LOCAL_SRC_FILES := \
 	wl_logproxy.c
 
 LOCAL_C_INCLUDES := \
-	$(LOCAL_PATH) \
-	external/libnl-headers
+	$(LOCAL_PATH)
+
+ifneq ($(wildcard external/libnl),)
+LOCAL_C_INCLUDES += external/libnl/include
+else
+LOCAL_C_INCLUDES += external/libnl-headers
+endif
 
 LOCAL_NO_DEFAULT_COMPILER_FLAGS := true
 LOCAL_C_INCLUDES += $(LOCAL_PATH)/../libnl-headers \
@@ -48,11 +64,15 @@ LOCAL_CFLAGS += -DCONFIG_LIBNL20=y
 LOCAL_MODULE := wl_logproxy
 LOCAL_LDFLAGS := -Wl,--no-gc-sections
 LOCAL_MODULE_TAGS := debug
-#LOCAL_SHARED_LIBRARIES := libnl
+ifneq ($(wildcard external/libnl),)
+LOCAL_SHARED_LIBRARIES += libnl
+else
 LOCAL_STATIC_LIBRARIES := libnl_2
+endif
 LOCAL_MODULE := wl_logproxy
 
 include $(BUILD_EXECUTABLE)
+endif
 
 include $(LOCAL_PATH)/hw/Android.mk
 LOCAL_PATH=$(LOCAL_DIR)

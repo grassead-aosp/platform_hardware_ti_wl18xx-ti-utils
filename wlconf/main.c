@@ -28,7 +28,7 @@
 #include "crc32.h"
 #include "wlconf.h"
 
-#ifdef ANDROID
+#ifdef ANDROID_BUGGY
 static ssize_t getline(char **lineptr, size_t *n, FILE *stream)
 {
 	char *lptr;
